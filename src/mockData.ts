@@ -16,7 +16,7 @@ const BASE_TIME = new Date('2026-05-24T20:12:00+08:00').getTime()
 const DEVICE_CATALOG = [
   {
     label: 'device_0',
-    ieeeAddr: '00:12:4b:00:de:2f:4f:3a',
+    ieeeAddr: 'f0:f5:bd:ff:fe:02:f3:28',
     shortAddr: '0x4A28',
     role: 'Router',
     capability: '0x8C',
@@ -26,7 +26,7 @@ const DEVICE_CATALOG = [
   },
   {
     label: 'device_1',
-    ieeeAddr: '00:12:4b:00:9f:52:c1:7a',
+    ieeeAddr: '98:a3:16:ff:fe:9e:d4:6c',
     shortAddr: '0x9A15',
     role: 'EndDevice',
     capability: '0x80',
@@ -36,7 +36,7 @@ const DEVICE_CATALOG = [
   },
   {
     label: 'device_2',
-    ieeeAddr: '00:12:4b:00:53:91:7d:2f',
+    ieeeAddr: 'ac:eb:e6:ff:fe:c2:23:6c',
     shortAddr: '0xBCB7',
     role: 'Router',
     capability: '0x8C',
@@ -46,23 +46,13 @@ const DEVICE_CATALOG = [
   },
   {
     label: 'device_3',
-    ieeeAddr: '00:12:4b:00:1d:84:62:f1',
+    ieeeAddr: 'ac:eb:e6:ff:fe:c0:bf:a8',
     shortAddr: '0xC4F1',
     role: 'Coordinator Peer',
     capability: '0x84',
     family: 'Peer / 对照节点',
     tags: ['锐利', '集中'],
     seed: 44,
-  },
-  {
-    label: 'device_4',
-    ieeeAddr: '00:12:4b:00:77:b8:35:29',
-    shortAddr: '0xD630',
-    role: 'Router',
-    capability: '0x8C',
-    family: 'Router / 中继节点',
-    tags: ['厚重', '分散'],
-    seed: 57,
   },
 ] as const
 

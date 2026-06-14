@@ -134,8 +134,8 @@ interface AdmissionDetailResponse extends AdmissionSummary {
     imag?: number[]
   } | null
   gaf?: {
-    shape?: number[]
-    data?: number[][][]
+    shape?: Array<number | string>
+    data?: unknown
   } | null
 }
 
@@ -750,15 +750,12 @@ function buildLatestAdmissionByShortAddr(admissions: AdmissionSummary[]) {
 }
 
 function buildHeatmapsFromGaf(gaf: AdmissionDetailResponse['gaf']): FingerprintMatrix[] | null {
-  const shape = gaf?.shape ?? []
-  const data = gaf?.data
-  if (!Array.isArray(data) || shape[0] !== 2 || shape[1] !== 256 || shape[2] !== 256) {
+  const channels = normalizeGafChannels(gaf?.data, gaf?.shape)
+  if (channels.length === 0) {
     return null
   }
 
-  return data.slice(0, 2).map((channel, index) =>
-    matrixToHeatmap(channel, index === 0 ? '指纹图 A' : '指纹图 B', '实时 GAF'),
-  )
+  return channels.map((channel, index) => matrixToHeatmap(channel, getHeatmapTitle(index), '实时 GAF'))
 }
 
 function matrixToHeatmap(matrix: number[][], title: string, subtitle: string): FingerprintMatrix {
@@ -793,6 +790,140 @@ function matrixToHeatmap(matrix: number[][], title: string, subtitle: string): F
     max,
     points,
   }
+}
+
+function normalizeGafChannels(data: unknown, shape: Array<number | string> | undefined): number[][][] {
+  if (!Array.isArray(data) || data.length === 0) {
+    return []
+  }
+
+  const normalizedShape = normalizeTensorShape(shape)
+  const [channelCount = 0, rowCount = 0, columnCount = 0] = normalizedShape
+  const first = data[0]
+
+  if (Array.isArray(first) && Array.isArray(first[0])) {
+    return data
+      .map((channel) => normalizeNumericMatrix(channel))
+      .filter((channel): channel is number[][] => channel !== null)
+  }
+
+  if (
+    channelCount > 0 &&
+    rowCount > 0 &&
+    columnCount > 0 &&
+    data.length === channelCount &&
+    Array.isArray(first) &&
+    first.length === rowCount * columnCount
+  ) {
+    return data
+      .map((channel) => reshapeFlatMatrix(channel, rowCount, columnCount))
+      .filter((channel): channel is number[][] => channel !== null)
+  }
+
+  const matrix = normalizeNumericMatrix(data)
+  if (matrix) {
+    return [matrix]
+  }
+
+  if (
+    channelCount > 0 &&
+    rowCount > 0 &&
+    columnCount > 0 &&
+    data.length === channelCount * rowCount * columnCount
+  ) {
+    return reshapeFlatTensor(data, channelCount, rowCount, columnCount) ?? []
+  }
+
+  return []
+}
+
+function normalizeTensorShape(shape: Array<number | string> | undefined) {
+  if (!Array.isArray(shape)) {
+    return []
+  }
+
+  return shape
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0)
+}
+
+function normalizeNumericMatrix(value: unknown): number[][] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null
+  }
+
+  const rows: number[][] = []
+  let columnCount: number | null = null
+
+  for (const row of value) {
+    if (!Array.isArray(row) || row.length === 0) {
+      return null
+    }
+
+    if (columnCount === null) {
+      columnCount = row.length
+    } else if (row.length !== columnCount) {
+      return null
+    }
+
+    rows.push(row.map(normalizeGafValue))
+  }
+
+  return rows
+}
+
+function reshapeFlatMatrix(value: unknown, rowCount: number, columnCount: number): number[][] | null {
+  if (!Array.isArray(value) || value.length !== rowCount * columnCount) {
+    return null
+  }
+
+  const rows: number[][] = []
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    rows.push(
+      value
+        .slice(rowIndex * columnCount, (rowIndex + 1) * columnCount)
+        .map(normalizeGafValue),
+    )
+  }
+
+  return rows
+}
+
+function reshapeFlatTensor(
+  value: unknown[],
+  channelCount: number,
+  rowCount: number,
+  columnCount: number,
+): number[][][] | null {
+  const channels: number[][][] = []
+  const channelSize = rowCount * columnCount
+
+  for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
+    const matrix = reshapeFlatMatrix(
+      value.slice(channelIndex * channelSize, (channelIndex + 1) * channelSize),
+      rowCount,
+      columnCount,
+    )
+    if (!matrix) {
+      return null
+    }
+    channels.push(matrix)
+  }
+
+  return channels
+}
+
+function normalizeGafValue(value: unknown) {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+function getHeatmapTitle(index: number) {
+  if (index >= 0 && index < 26) {
+    return `指纹图 ${String.fromCharCode(65 + index)}`
+  }
+
+  return `指纹图 ${index + 1}`
 }
 
 function buildReferenceHeatmaps(response: ReferenceFingerprintResponse): FingerprintMatrix[] | null {
