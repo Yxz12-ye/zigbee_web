@@ -1085,7 +1085,7 @@ function inferRole(capability: string, shortAddr: string) {
   }
   const normalized = capability.toLowerCase()
   if (normalized === '0x8c') {
-    return 'Router'
+    return 'End_Device'
   }
   if (normalized === '0x80') {
     return 'EndDevice'
